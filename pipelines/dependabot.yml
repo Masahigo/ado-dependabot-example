@@ -1,0 +1,48 @@
+schedules:
+  - cron: '0 3 * * *'
+    displayName: 'Every day at 3am'
+    branches:
+      include:
+        - master
+    always: true
+
+trigger: none
+
+variables:
+  - group: dependabot
+
+jobs:
+  - job:
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+      - checkout: none
+
+      - task: Bash@3
+        displayName: Create renovate config
+        inputs:
+          targetType: inline
+          script: |
+            cat > config.js << EOF
+            module.exports = {
+              platform: 'azure',
+              endpoint: '$(System.TeamFoundationCollectionUri)',
+              logLevel: '$(LOG_LEVEL)',
+              token: '$(System.AccessToken)',
+              ignoreNpmrcFile: true,
+              repositories: ['$(System.TeamProject)/$(ADO_REPO_NAME)']
+            };
+            EOF
+
+      - task: Bash@3
+        displayName: Run renovate
+        inputs:
+          targetType: inline
+          script: |
+            # Git credentials
+            git config --global user.email 'bot@renovateapp.com'
+            git config --global user.name  'Renovate Bot'
+            # PAT for github.com
+            export GITHUB_COM_TOKEN="$(GITHUB_COM_TOKEN)"
+            # Run renovate
+            npx renovate
